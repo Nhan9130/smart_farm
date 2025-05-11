@@ -15,7 +15,6 @@ try:
     HARDWARE_AVAILABLE = True
     logger.info("Đã nhập thành công thư viện phần cứng")
 except ImportError:
-    HARDWARE_AVAILABLE = False
     logger.warning("Không thể nhập thư viện phần cứng, sẽ sử dụng chế độ mô phỏng")
 
 class SensorManager:
@@ -45,14 +44,12 @@ class SensorManager:
                 logger.info("Đã khởi tạo kết nối thành công với ADS1115")
             except Exception as e:
                 logger.error(f"Lỗi khi khởi tạo ADS1115: {e}")
-                self.use_hardware = False
-        
+               
         if not self.use_hardware:
             # Khởi tạo giá trị giả lập
             self.rain_value = 20.0
             self.soil_moisture = 50.0
             self.ph_value = 6.5
-            logger.info("Sử dụng chế độ mô phỏng cảm biến")
     
     def test_connection(self):
         """Kiểm tra kết nối với ADS1115"""

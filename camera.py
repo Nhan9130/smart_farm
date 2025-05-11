@@ -9,13 +9,12 @@ from config import Config
 # Thiết lập logging
 logger = logging.getLogger(__name__)
 
-# Kiểm tra xem có thể sử dụng camera thật không
+# Kiểm tra xem thư viện picamera2 có khả dụng không
 try:
     from picamera2 import Picamera2
     CAMERA_AVAILABLE = True
     logger.info("Đã nhập thành công thư viện picamera2")
 except ImportError:
-    CAMERA_AVAILABLE = False
     logger.warning("Không thể nhập thư viện picamera2, sẽ sử dụng chế độ mô phỏng")
 
 class Camera:
@@ -23,17 +22,21 @@ class Camera:
     Lớp quản lý Raspberry Pi Camera
     Hỗ trợ chức năng chụp ảnh và xử lý video stream
     """
-    
+class Camera:
     def __init__(self, use_hardware=True):
-        """Khởi tạo và thiết lập Raspberry Pi Camera"""
         self.use_hardware = use_hardware and CAMERA_AVAILABLE
         self.last_processed_frame = None
         self.image_path = 'static/img/camera-placeholder.jpg'
-        
+
         if self.use_hardware:
             try:
                 # Khởi tạo Picamera2
                 self.camera = Picamera2()
+                self.camera.start()
+                logger.info("Đã khởi tạo thành công camera")
+            except Exception as e:
+                logger.error(f"Lỗi khi khởi tạo camera: {e}")
+
                 
                 # Cấu hình camera
                 self.config = self.camera.create_still_configuration(
@@ -52,8 +55,7 @@ class Camera:
                 logger.info("Đã khởi tạo thành công camera")
             except Exception as e:
                 logger.error(f"Lỗi khi khởi tạo camera: {e}")
-                self.use_hardware = False
-        
+
         if not self.use_hardware:
             # Tạo thư mục để lưu ảnh placeholder nếu chưa tồn tại
             os.makedirs(os.path.dirname(self.image_path), exist_ok=True)

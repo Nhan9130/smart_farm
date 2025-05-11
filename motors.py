@@ -11,7 +11,6 @@ try:
     HARDWARE_AVAILABLE = True
     logger.info("Đã nhập thành công thư viện GPIO")
 except ImportError:
-    HARDWARE_AVAILABLE = False
     logger.warning("Không thể nhập thư viện GPIO, sẽ sử dụng chế độ mô phỏng")
 
 class MotorController:
@@ -53,7 +52,6 @@ class MotorController:
                 logger.info("Đã khởi tạo thành công GPIO cho điều khiển động cơ")
             except Exception as e:
                 logger.error(f"Lỗi khi khởi tạo GPIO: {e}")
-                self.use_hardware = False
         
         if not self.use_hardware:
             logger.info("Sử dụng chế độ mô phỏng điều khiển động cơ")
