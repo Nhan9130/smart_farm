@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="480" viewBox="0 0 640 480">
+  <rect width="640" height="480" fill="#1a1a1a"/>
+  <g fill="none" stroke="#555" stroke-width="2">
+    <path d="M320 120 L320 360 M120 240 L520 240"/>
+    <circle cx="320" cy="240" r="100"/>
+    <circle cx="320" cy="240" r="50"/>
+  </g>
+  <g fill="#555">
+    <text x="320" y="400" font-family="Arial" font-size="20" text-anchor="middle">Đang kết nối camera...</text>
+    <text x="320" y="80" font-family="Arial" font-size="24" text-anchor="middle" fill="#999">Camera giám sát</text>
+  </g>
+  <g fill="none" stroke="#777" stroke-width="2">
+    <path d="M40 40 L80 40 L80 80 L40 80 Z"/>
+    <path d="M560 40 L600 40 L600 80 L560 80 Z"/>
+    <path d="M40 400 L80 400 L80 440 L40 440 Z"/>
+    <path d="M560 400 L600 400 L600 440 L560 440 Z"/>
+  </g>
+  <g fill="#666">
+    <circle cx="50" cy="50" r="5"/>
+    <circle cx="70" cy="50" r="5"/>
+    <circle cx="50" cy="70" r="5"/>
+    <circle cx="70" cy="70" r="5"/>
+    
+    <circle cx="570" cy="50" r="5"/>
+    <circle cx="590" cy="50" r="5"/>
+    <circle cx="570" cy="70" r="5"/>
+    <circle cx="590" cy="70" r="5"/>
+    
+    <circle cx="50" cy="410" r="5"/>
+    <circle cx="70" cy="410" r="5"/>
+    <circle cx="50" cy="430" r="5"/>
+    <circle cx="70" cy="430" r="5"/>
+    
+    <circle cx="570" cy="410" r="5"/>
+    <circle cx="590" cy="410" r="5"/>
+    <circle cx="570" cy="430" r="5"/>
+    <circle cx="590" cy="430" r="5"/>
+  </g>
+  <g>
+    <path d="M380 180 L420 160 L420 200 Z" fill="#888"/>
+  </g>
+</svg>

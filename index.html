@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="vi" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Nông Nghiệp Thông Minh</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <link href="{{ url_for('static', filename='css/custom.css') }}" rel="stylesheet">
+    
+    <!-- Socket.IO -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.1.3/socket.io.js"></script>
+    
+    <!-- Plotly - Thư viện vẽ biểu đồ -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    
+    <style>
+        .card-hover:hover {
+            transform: translateY(-5px);
+            transition: transform 0.3s ease;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        
+        .sensor-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+        }
+        
+        .welcome-section {
+            padding: 40px 0;
+            text-align: center;
+        }
+        
+        .sidebar {
+            min-height: 100vh;
+            padding: 20px;
+            background-color: var(--bs-dark);
+        }
+        
+        .main-content {
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .system-status {
+            background-color: rgba(0,0,0,0.1);
+            border-radius: 8px;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-md-2 sidebar p-3">
+                <h3 class="text-center mb-4">
+                    <i class="fas fa-seedling"></i> 
+                    Smart Agri
+                </h3>
+                <div class="list-group">
+                    <a href="{{ url_for('index') }}" class="list-group-item list-group-item-action active">
+                        <i class="fas fa-home"></i> Trang chủ
+                    </a>
+                    <a href="{{ url_for('dashboard') }}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-chart-line"></i> Bảng điều khiển
+                    </a>
+                    <a href="{{ url_for('camera_view') }}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-camera"></i> Camera giám sát
+                    </a>
+                    <a href="{{ url_for('controls') }}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-cogs"></i> Điều khiển thủ công
+                    </a>
+                    <a href="{{ url_for('settings') }}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-sliders-h"></i> Cài đặt
+                    </a>
+                </div>
+                
+                <!-- Trạng thái hệ thống -->
+                <div class="mt-4">
+                    <h5 class="text-center">Trạng thái hệ thống</h5>
+                    <div class="system-status p-2">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Mái che:</span>
+                            <span id="cover-status" class="badge bg-secondary">Không xác định</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Tưới nước:</span>
+                            <span id="water-status" class="badge bg-secondary">Không xác định</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Chế độ:</span>
+                            <span id="mode-status" class="badge bg-primary">Tự động</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Kết nối:</span>
+                            <span id="connection-status" class="badge bg-danger">Đang kết nối</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Main content -->
+            <div class="col-md-10 main-content p-3">
+                <div class="welcome-section mb-4">
+                    <h1 class="display-4">Hệ Thống Nông Nghiệp Thông Minh</h1>
+                    <p class="lead">Giám sát và điều khiển tự động mái che và tưới nước dựa trên dữ liệu từ cảm biến</p>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">Trạng thái hiện tại</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <!-- Cảm biến mưa -->
+                                    <div class="col-md-4">
+                                        <div class="card card-hover mb-3">
+                                            <div class="card-body text-center">
+                                                <h5 class="card-title">
+                                                    <i class="fas fa-cloud-rain"></i> Mưa
+                                                </h5>
+                                                <div class="sensor-value" id="rain-value">--.--%</div>
+                                                <div class="progress mt-2">
+                                                    <div class="progress-bar bg-info" id="rain-progress" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                                                </div>
+                                                <p class="card-text mt-2" id="rain-status">Đang đọc dữ liệu...</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Cảm biến độ ẩm đất -->
+                                    <div class="col-md-4">
+                                        <div class="card card-hover mb-3">
+                                            <div class="card-body text-center">
+                                                <h5 class="card-title">
+                                                    <i class="fas fa-water"></i> Độ ẩm đất
+                                                </h5>
+                                                <div class="sensor-value" id="soil-value">--.--%</div>
+                                                <div class="progress mt-2">
+                                                    <div class="progress-bar bg-success" id="soil-progress" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                                                </div>
+                                                <p class="card-text mt-2" id="soil-status">Đang đọc dữ liệu...</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Cảm biến pH -->
+                                    <div class="col-md-4">
+                                        <div class="card card-hover mb-3">
+                                            <div class="card-body text-center">
+                                                <h5 class="card-title">
+                                                    <i class="fas fa-flask"></i> Độ pH
+                                                </h5>
+                                                <div class="sensor-value" id="ph-value">-.-</div>
+                                                <div class="progress mt-2">
+                                                    <div class="progress-bar bg-warning" id="ph-progress" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="14"></div>
+                                                </div>
+                                                <p class="card-text mt-2" id="ph-status">Đang đọc dữ liệu...</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5 class="card-title mb-0">Điều khiển nhanh</h5>
+                                <span id="auto-mode-badge" class="badge bg-primary">Chế độ tự động</span>
+                            </div>
+                            <div class="card-body">
+                                <div class="d-flex justify-content-around my-3">
+                                    <button class="btn btn-lg" id="toggle-mode-btn">
+                                        <i class="fas fa-robot"></i> Chuyển sang chế độ thủ công
+                                    </button>
+                                </div>
+                                
+                                <div class="row mt-4" id="manual-controls" style="display: none;">
+                                    <div class="col-md-6 text-center mb-3">
+                                        <h6>Điều khiển mái che</h6>
+                                        <div class="btn-group" role="group">
+                                            <button type="button" class="btn btn-success" id="cover-on-btn">
+                                                <i class="fas fa-play"></i> Mở
+                                            </button>
+                                            <button type="button" class="btn btn-danger" id="cover-off-btn">
+                                                <i class="fas fa-stop"></i> Đóng
+                                            </button>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-6 text-center mb-3">
+                                        <h6>Điều khiển tưới nước</h6>
+                                        <div class="btn-group" role="group">
+                                            <button type="button" class="btn btn-success" id="water-on-btn">
+                                                <i class="fas fa-play"></i> Bật
+                                            </button>
+                                            <button type="button" class="btn btn-danger" id="water-off-btn">
+                                                <i class="fas fa-stop"></i> Tắt
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">Camera giám sát</h5>
+                            </div>
+                            <div class="card-body text-center">
+                                <div class="mb-3">
+                                    <img id="camera-feed" src="{{ url_for('static', filename='img/camera-placeholder.svg') }}" alt="Camera feed" class="img-fluid rounded" style="max-height: 240px;">
+                                </div>
+                                <div id="animal-detection-info" class="alert alert-info">
+                                    Đang tải dữ liệu camera...
+                                </div>
+                                <a href="{{ url_for('camera_view') }}" class="btn btn-primary">
+                                    <i class="fas fa-camera"></i> Xem camera chi tiết
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">Biểu đồ dữ liệu gần đây</h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="recent-chart" style="height: 300px;"></div>
+                            </div>
+                            <div class="card-footer text-end">
+                                <a href="{{ url_for('dashboard') }}" class="btn btn-outline-primary">
+                                    <i class="fas fa-chart-line"></i> Xem biểu đồ chi tiết
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Custom JS -->
+    <script>
+        // Khởi tạo socket.io
+        const socket = io();
+        
+        // Khi kết nối thành công
+        socket.on('connect', function() {
+            document.getElementById('connection-status').className = 'badge bg-success';
+            document.getElementById('connection-status').textContent = 'Đã kết nối';
+        });
+        
+        // Khi mất kết nối
+        socket.on('disconnect', function() {
+            document.getElementById('connection-status').className = 'badge bg-danger';
+            document.getElementById('connection-status').textContent = 'Mất kết nối';
+        });
+        
+        // Cập nhật trạng thái động cơ
+        socket.on('motor_state', function(data) {
+            const coverStatus = document.getElementById('cover-status');
+            const waterStatus = document.getElementById('water-status');
+            
+            // Cập nhật trạng thái mái che
+            if (data.cover_motor) {
+                coverStatus.className = 'badge bg-success';
+                coverStatus.textContent = 'Hoạt động';
+            } else {
+                coverStatus.className = 'badge bg-danger';
+                coverStatus.textContent = 'Không hoạt động';
+            }
+            
+            // Cập nhật trạng thái tưới nước
+            if (data.water_motor) {
+                waterStatus.className = 'badge bg-success';
+                waterStatus.textContent = 'Hoạt động';
+            } else {
+                waterStatus.className = 'badge bg-danger';
+                waterStatus.textContent = 'Không hoạt động';
+            }
+        });
+        
+        // Biến lưu trữ dữ liệu cho biểu đồ
+        let chartData = {
+            timestamps: [],
+            rain: [],
+            soil: [],
+            ph: []
+        };
+        
+        // Biến lưu trạng thái
+        let autoMode = true;
+        
+        // Khởi tạo biểu đồ
+        function initChart() {
+            const traces = [
+                {
+                    x: chartData.timestamps,
+                    y: chartData.rain,
+                    name: 'Mưa (%)',
+                    type: 'line',
+                    line: {color: '#36a2eb'}
+                },
+                {
+                    x: chartData.timestamps,
+                    y: chartData.soil,
+                    name: 'Độ ẩm đất (%)',
+                    type: 'line',
+                    line: {color: '#4bc0c0'}
+                },
+                {
+                    x: chartData.timestamps,
+                    y: chartData.ph,
+                    name: 'pH',
+                    type: 'line',
+                    line: {color: '#ff9f40'},
+                    yaxis: 'y2'
+                }
+            ];
+            
+            const layout = {
+                margin: { t: 20, l: 50, r: 50, b: 40 },
+                legend: { orientation: 'h', y: 1.1 },
+                xaxis: { title: 'Thời gian' },
+                yaxis: { title: 'Giá trị (%)', range: [0, 100] },
+                yaxis2: {
+                    title: 'pH',
+                    range: [0, 14],
+                    overlaying: 'y',
+                    side: 'right'
+                },
+                showlegend: true,
+                grid: { rows: 1, columns: 1, pattern: 'independent' }
+            };
+            
+            Plotly.newPlot('recent-chart', traces, layout);
+        }
+        
+        // Cập nhật biểu đồ
+        function updateChart(data) {
+            // Thêm dữ liệu mới vào mảng
+            chartData.timestamps.push(data.timestamp);
+            chartData.rain.push(data.rain);
+            chartData.soil.push(data.soil_moisture);
+            chartData.ph.push(data.ph);
+            
+            // Giới hạn số điểm dữ liệu
+            const maxPoints = 20;
+            if (chartData.timestamps.length > maxPoints) {
+                chartData.timestamps.shift();
+                chartData.rain.shift();
+                chartData.soil.shift();
+                chartData.ph.shift();
+            }
+            
+            Plotly.update('recent-chart', {
+                x: [chartData.timestamps, chartData.timestamps, chartData.timestamps],
+                y: [chartData.rain, chartData.soil, chartData.ph]
+            });
+        }
+        
+        // Cập nhật hiển thị trạng thái cảm biến
+        function updateSensorDisplay(data) {
+            // Cập nhật giá trị mưa
+            document.getElementById('rain-value').textContent = data.rain.toFixed(1) + '%';
+            document.getElementById('rain-progress').style.width = data.rain + '%';
+            document.getElementById('rain-progress').setAttribute('aria-valuenow', data.rain);
+            
+            // Cập nhật trạng thái mưa
+            if (data.rain > 40) {
+                document.getElementById('rain-status').textContent = 'Trời đang mưa';
+                document.getElementById('rain-status').className = 'card-text mt-2 text-info';
+            } else {
+                document.getElementById('rain-status').textContent = 'Trời không mưa';
+                document.getElementById('rain-status').className = 'card-text mt-2';
+            }
+            
+            // Cập nhật giá trị độ ẩm đất
+            document.getElementById('soil-value').textContent = data.soil_moisture.toFixed(1) + '%';
+            document.getElementById('soil-progress').style.width = data.soil_moisture + '%';
+            document.getElementById('soil-progress').setAttribute('aria-valuenow', data.soil_moisture);
+            
+            // Cập nhật trạng thái độ ẩm đất
+            if (data.soil_moisture < 30) {
+                document.getElementById('soil-status').textContent = 'Đất khô';
+                document.getElementById('soil-status').className = 'card-text mt-2 text-danger';
+            } else if (data.soil_moisture > 70) {
+                document.getElementById('soil-status').textContent = 'Đất quá ẩm';
+                document.getElementById('soil-status').className = 'card-text mt-2 text-info';
+            } else {
+                document.getElementById('soil-status').textContent = 'Độ ẩm đất thích hợp';
+                document.getElementById('soil-status').className = 'card-text mt-2 text-success';
+            }
+            
+            // Cập nhật giá trị pH
+            document.getElementById('ph-value').textContent = data.ph.toFixed(1);
+            const phPercent = (data.ph / 14) * 100;
+            document.getElementById('ph-progress').style.width = phPercent + '%';
+            document.getElementById('ph-progress').setAttribute('aria-valuenow', data.ph);
+            
+            // Cập nhật trạng thái pH
+            if (data.ph < 6.0) {
+                document.getElementById('ph-status').textContent = 'Đất chua';
+                document.getElementById('ph-status').className = 'card-text mt-2 text-danger';
+            } else if (data.ph > 7.5) {
+                document.getElementById('ph-status').textContent = 'Đất kiềm';
+                document.getElementById('ph-status').className = 'card-text mt-2 text-warning';
+            } else {
+                document.getElementById('ph-status').textContent = 'pH thích hợp';
+                document.getElementById('ph-status').className = 'card-text mt-2 text-success';
+            }
+        }
+        
+        // Cập nhật hiển thị camera
+        function updateCameraDisplay(data) {
+            const animalInfo = document.getElementById('animal-detection-info');
+            
+            if (data.has_animals) {
+                animalInfo.className = 'alert alert-warning';
+                animalInfo.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Phát hiện ${data.animals_count} gia súc trong khu vực (${data.timestamp})`;
+            } else {
+                animalInfo.className = 'alert alert-success';
+                animalInfo.innerHTML = `<i class="fas fa-check-circle"></i> Không phát hiện gia súc trong khu vực (${data.timestamp})`;
+            }
+        }
+        
+        // Cập nhật hình ảnh camera
+        function updateCameraImage() {
+            fetch('/api/camera/stream')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.image) {
+                        document.getElementById('camera-feed').src = 'data:image/jpeg;base64,' + data.image;
+                    }
+                })
+                .catch(error => console.error('Lỗi khi lấy hình ảnh camera:', error));
+        }
+        
+        // Xử lý chuyển đổi chế độ
+        function toggleMode() {
+            autoMode = !autoMode;
+            
+            // Cập nhật giao diện
+            const toggleBtn = document.getElementById('toggle-mode-btn');
+            const modeBadge = document.getElementById('auto-mode-badge');
+            const modeStatus = document.getElementById('mode-status');
+            const manualControls = document.getElementById('manual-controls');
+            
+            if (autoMode) {
+                toggleBtn.innerHTML = '<i class="fas fa-robot"></i> Chuyển sang chế độ thủ công';
+                modeBadge.className = 'badge bg-primary';
+                modeBadge.textContent = 'Chế độ tự động';
+                modeStatus.className = 'badge bg-primary';
+                modeStatus.textContent = 'Tự động';
+                manualControls.style.display = 'none';
+            } else {
+                toggleBtn.innerHTML = '<i class="fas fa-hand-pointer"></i> Chuyển sang chế độ tự động';
+                modeBadge.className = 'badge bg-secondary';
+                modeBadge.textContent = 'Chế độ thủ công';
+                modeStatus.className = 'badge bg-secondary';
+                modeStatus.textContent = 'Thủ công';
+                manualControls.style.display = 'flex';
+            }
+            
+            // Gửi yêu cầu đến server
+            fetch('/api/mode', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mode: autoMode ? 'auto' : 'manual' })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    console.error('Lỗi khi chuyển đổi chế độ:', data.message);
+                }
+            })
+            .catch(error => console.error('Lỗi khi gửi yêu cầu:', error));
+        }
+        
+        // Điều khiển động cơ mái che
+        function controlCoverMotor(action) {
+            fetch('/api/motor/cover', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    console.error('Lỗi khi điều khiển mái che:', data.message);
+                }
+            })
+            .catch(error => console.error('Lỗi khi gửi yêu cầu:', error));
+        }
+        
+        // Điều khiển động cơ tưới nước
+        function controlWaterMotor(action) {
+            fetch('/api/motor/water', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    console.error('Lỗi khi điều khiển tưới nước:', data.message);
+                }
+            })
+            .catch(error => console.error('Lỗi khi gửi yêu cầu:', error));
+        }
+        
+        // Khởi tạo trang
+        document.addEventListener('DOMContentLoaded', function() {
+            // Khởi tạo biểu đồ
+            initChart();
+            
+            // Đăng ký lắng nghe sự kiện dữ liệu từ cảm biến
+            socket.on('sensor_data', function(data) {
+                // Cập nhật hiển thị
+                updateSensorDisplay(data);
+                updateChart(data);
+            });
+            
+            // Đăng ký lắng nghe sự kiện dữ liệu từ camera
+            socket.on('camera_data', function(data) {
+                updateCameraDisplay(data);
+            });
+            
+            // Cập nhật hình ảnh từ camera định kỳ
+            setInterval(updateCameraImage, 5000);
+            
+            // Đăng ký sự kiện cho nút chuyển đổi chế độ
+            document.getElementById('toggle-mode-btn').addEventListener('click', toggleMode);
+            
+            // Đăng ký sự kiện cho các nút điều khiển động cơ
+            document.getElementById('cover-on-btn').addEventListener('click', function() {
+                controlCoverMotor('activate');
+            });
+            
+            document.getElementById('cover-off-btn').addEventListener('click', function() {
+                controlCoverMotor('stop');
+            });
+            
+            document.getElementById('water-on-btn').addEventListener('click', function() {
+                controlWaterMotor('activate');
+            });
+            
+            document.getElementById('water-off-btn').addEventListener('click', function() {
+                controlWaterMotor('stop');
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,289 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<style>
+    .control-card {
+        margin-bottom: 20px;
+    }
+    
+    .motor-control-btn {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+    
+    .status-indicator {
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+        background-color: rgba(0, 0, 0, 0.1);
+    }
+    
+    .control-info {
+        margin-top: 10px;
+        font-size: 0.9em;
+    }
+    
+    .auto-mode-switch {
+        width: 4rem;
+        height: 2rem;
+    }
+    
+    .threshold-container {
+        padding: 20px;
+        margin-top: 15px;
+        border-radius: 8px;
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+    
+    .threshold-slider {
+        width: 100%;
+    }
+    
+    .status-heading {
+        margin-bottom: 15px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        padding-bottom: 10px;
+    }
+    
+    .sensor-card {
+        margin-bottom: 20px;
+    }
+    
+    .control-group {
+        margin-top: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Điều Khiển Hệ Thống</h1>
+    <div id="alerts-container"></div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Điều khiển thủ công</h5>
+            </div>
+            <div class="card-body">
+                <div class="status-indicator">
+                    <div class="status-heading">
+                        <h6 class="mb-3">Chế độ điều khiển</h6>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input auto-mode-switch" type="checkbox" id="auto-mode-switch" checked>
+                            <label class="form-check-label" for="auto-mode-switch">
+                                Chế độ tự động: <span id="auto-mode-status" class="badge bg-success">Đang bật</span>
+                            </label>
+                            <div class="form-text">
+                                Trong chế độ tự động, hệ thống sẽ tự động điều khiển mái che và tưới nước dựa trên dữ liệu cảm biến
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="manual-controls" style="display: none;">
+                        <div class="row mt-4">
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h6 class="card-title mb-0">Điều khiển mái che</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <p>Trạng thái: <span id="cover-motor-status" class="badge bg-danger">Không hoạt động</span></p>
+                                        <div class="d-grid gap-2">
+                                            <button type="button" class="btn btn-success" id="cover-on-btn">
+                                                <i class="fas fa-play"></i> Kích hoạt mái che
+                                            </button>
+                                            <button type="button" class="btn btn-danger" id="cover-off-btn" disabled>
+                                                <i class="fas fa-stop"></i> Dừng mái che
+                                            </button>
+                                        </div>
+                                        <div class="control-info">
+                                            <i class="fas fa-info-circle"></i> 
+                                            Mái che sẽ tự động kích hoạt khi trời mưa
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h6 class="card-title mb-0">Điều khiển tưới nước</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <p>Trạng thái: <span id="water-motor-status" class="badge bg-danger">Không hoạt động</span></p>
+                                        <div class="d-grid gap-2">
+                                            <button type="button" class="btn btn-success" id="water-on-btn">
+                                                <i class="fas fa-play"></i> Bật tưới nước
+                                            </button>
+                                            <button type="button" class="btn btn-danger" id="water-off-btn" disabled>
+                                                <i class="fas fa-stop"></i> Tắt tưới nước
+                                            </button>
+                                        </div>
+                                        <div class="control-info">
+                                            <i class="fas fa-info-circle"></i> 
+                                            Tưới nước sẽ tự động kích hoạt khi đất khô
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="threshold-container">
+                    <h6>Cài đặt ngưỡng</h6>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="rain-threshold" class="form-label">Ngưỡng mưa (%)</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="rain-threshold" min="0" max="100" value="40">
+                                <span class="input-group-text">%</span>
+                            </div>
+                            <div class="form-text">Kích hoạt mái che khi giá trị cảm biến mưa vượt quá ngưỡng này</div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="soil-threshold" class="form-label">Ngưỡng độ ẩm đất (%)</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="soil-threshold" min="0" max="100" value="30">
+                                <span class="input-group-text">%</span>
+                            </div>
+                            <div class="form-text">Kích hoạt tưới nước khi độ ẩm đất dưới ngưỡng này</div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="button" class="btn btn-primary" id="save-thresholds-btn">
+                            <i class="fas fa-save"></i> Lưu cài đặt ngưỡng
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Lịch sử hoạt động</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Thời gian</th>
+                                <th>Thiết bị</th>
+                                <th>Hành động</th>
+                                <th>Nguyên nhân</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table-body">
+                            <tr>
+                                <td colspan="4" class="text-center">Đang tải dữ liệu...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Giá trị cảm biến hiện tại</h5>
+            </div>
+            <div class="card-body">
+                <div class="sensor-card">
+                    <h6>Cảm biến mưa</h6>
+                    <div class="d-flex justify-content-between">
+                        <span>Giá trị hiện tại:</span>
+                        <span id="current-rain" class="fw-bold">--.--%</span>
+                    </div>
+                    <div class="progress mt-2 mb-2">
+                        <div class="progress-bar bg-info" id="rain-progress" role="progressbar" style="width: 0%"></div>
+                    </div>
+                </div>
+                
+                <div class="sensor-card">
+                    <h6>Cảm biến độ ẩm đất</h6>
+                    <div class="d-flex justify-content-between">
+                        <span>Giá trị hiện tại:</span>
+                        <span id="current-soil" class="fw-bold">--.--%</span>
+                    </div>
+                    <div class="progress mt-2 mb-2">
+                        <div class="progress-bar bg-success" id="soil-progress" role="progressbar" style="width: 0%"></div>
+                    </div>
+                </div>
+                
+                <div class="sensor-card">
+                    <h6>Cảm biến pH</h6>
+                    <div class="d-flex justify-content-between">
+                        <span>Giá trị hiện tại:</span>
+                        <span id="current-ph" class="fw-bold">-.-</span>
+                    </div>
+                    <div class="progress mt-2 mb-2">
+                        <div class="progress-bar bg-warning" id="ph-progress" role="progressbar" style="width: 0%"></div>
+                    </div>
+                    <div class="ph-scale">
+                        <span>0 - Chua</span>
+                        <span>7 - Trung tính</span>
+                        <span>14 - Kiềm</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Cảnh báo</h5>
+            </div>
+            <div class="card-body">
+                <div id="rain-alert" class="alert alert-warning" style="display: none;">
+                    Cảnh báo: Đang mưa
+                </div>
+                
+                <div id="soil-alert" class="alert alert-danger" style="display: none;">
+                    Cảnh báo: Đất khô, cần tưới nước
+                </div>
+                
+                <div class="text-center text-secondary" id="no-alerts" style="display: block;">
+                    <i class="fas fa-check-circle fa-2x mb-2"></i>
+                    <p>Không có cảnh báo nào</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Trợ giúp</h5>
+            </div>
+            <div class="card-body">
+                <h6>Điều khiển tự động</h6>
+                <p>Hệ thống sẽ tự động điều khiển các thiết bị dựa trên dữ liệu từ cảm biến:</p>
+                <ul>
+                    <li>Khi trời mưa (giá trị cảm biến mưa > ngưỡng): Kích hoạt mái che</li>
+                    <li>Khi đất khô (độ ẩm đất < ngưỡng): Kích hoạt tưới nước</li>
+                </ul>
+                
+                <h6 class="mt-3">Điều khiển thủ công</h6>
+                <p>Bạn có thể tắt chế độ tự động và điều khiển thủ công các thiết bị:</p>
+                <ul>
+                    <li>Sử dụng nút "Kích hoạt" để bật thiết bị</li>
+                    <li>Sử dụng nút "Dừng" để tắt thiết bị</li>
+                </ul>
+                
+                <div class="alert alert-info mt-3">
+                    <i class="fas fa-info-circle"></i> Chuyển sang chế độ tự động sẽ khôi phục điều khiển tự động dựa trên dữ liệu cảm biến.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/controls.js') }}"></script>
+{% endblock %}
